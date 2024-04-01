@@ -1,16 +1,16 @@
-package mutex_test
+package internal_test
 
 import (
 	"sync"
 	"testing"
 
-	"github.com/thetechpanda/mutex"
+	"github.com/thetechpanda/mutex/internal"
 )
 
 func TestNumeric(t *testing.T) {
 	// create a new Numeric with initial value 0
-	for _, mv := range []any{mutex.NewNumeric[int](), mutex.NewNumericWithValue[int](0)} {
-		m := mv.(mutex.Numeric[int])
+	for _, mv := range []any{internal.NewNumeric[int](), internal.NewNumericWithValue[int](0)} {
+		m := mv.(*internal.Numeric[int])
 		// test the Add method
 		t.Run("Add", func(t *testing.T) {
 			m.Store(0)
@@ -71,4 +71,15 @@ func TestNumeric(t *testing.T) {
 
 	}
 
+}
+
+func TestNumericClear(t *testing.T) {
+	m := internal.NewNumeric[int]()
+	m.Store(42)
+	m.Clear()
+	if v, ok := m.Load(); ok {
+		t.Errorf("Load(): Expected value to be absent")
+	} else if v != 0 {
+		t.Errorf("Load(): Expected value to be 0, got %d", v)
+	}
 }

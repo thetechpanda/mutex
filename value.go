@@ -1,7 +1,3 @@
-// # mutex.Value & mutex.Numeric
-//
-// Package mutex provides a thread-safe value store using a RWMutex.
-// It defines the Value and ValueNumeric interfaces and provides an implementation similar to atomic.Value.
 package mutex
 
 import (
@@ -29,8 +25,6 @@ type Value[V any] interface {
 	// CompareAndSwap swaps the old and new values
 	// if the value stored in the map is equal to old.
 	//
-	// The old value must be of a comparable type or this function will return false.
-	//
 	// Returns true if the swap was performed.
 	//
 	// ! this function uses reflect.DeepEqual to compare the values.
@@ -38,10 +32,14 @@ type Value[V any] interface {
 	// return true if the value is a zero value (not set)
 	IsZero() bool
 	// Exclusive executes the function f exclusively, ensuring that no other goroutine is accessing the value.
+	//
 	// The function f is passed the current value and a boolean indicating whether the value is set.
 	// The function f should return the new value to be stored.
-	// The function should not use any other methods of Value or a deadlock will occur.
+	//
+	// ! Do not invoke any Value or Numeric functions within 'f' to prevent a deadlock.
 	Exclusive(f func(v V, ok bool) V) V
+	// Clear removes the value from the store.
+	Clear()
 }
 
 // NewValue returns a new Value.
