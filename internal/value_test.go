@@ -1,4 +1,4 @@
-package mutex_test
+package internal_test
 
 import (
 	"fmt"
@@ -7,100 +7,63 @@ import (
 	"testing"
 
 	"github.com/thetechpanda/mutex"
+	"github.com/thetechpanda/mutex/internal"
 )
 
 func TestValue(t *testing.T) {
-	// Test Load() on an empty Value
-	t.Run("LoadEmpty", func(t *testing.T) {
-		mv := mutex.NewValue[int]()
-		v, ok := mv.Load()
-		if ok {
-			t.Errorf("Expected ok to be false, got true")
+	t.Run("test without value", func(t *testing.T) {
+		m := internal.NewValue[string]()
+		if _, ok := m.Load(); ok {
+			t.Errorf("Load(): Expected value to be absent")
 		}
-		if v != 0 {
-			t.Errorf("Expected value to be 0, got %v", v)
+		if swapped := m.CompareAndSwap("A", "B"); swapped {
+			t.Errorf("CompareAndSwap(): Expected value be swapped")
+		}
+		m.Store("B")
+		if swapped := m.CompareAndSwap("B", "C"); !swapped {
+			t.Errorf("CompareAndSwap(): Expected value be swapped")
+		}
+
+		mn := internal.NewValue[int]()
+		if _, ok := mn.Load(); ok {
+			t.Errorf("Load(): Expected value to be absent")
+		}
+		if swapped := mn.CompareAndSwap(-1, 42); swapped {
+			t.Errorf("CompareAndSwap(): Expected value not to be swapped")
+		}
+		mn.Store(42)
+		if swapped := mn.CompareAndSwap(42, -1); !swapped {
+			t.Errorf("CompareAndSwap(): Expected value be swapped")
 		}
 	})
-
-	// Test Store() and Load() on a Value
-	t.Run("StoreAndLoad", func(t *testing.T) {
-		mv := mutex.NewValue[int]()
-		mv.Store(42)
-		v, ok := mv.Load()
-		if !ok {
-			t.Errorf("Expected ok to be true, got false")
+	t.Run("test with value", func(t *testing.T) {
+		m := mutex.NewWithValue("42")
+		v, ok := m.Load()
+		if !ok || v != "42" {
+			t.Errorf("Load(): Expected value 42 , got value %s", v)
 		}
-		if v != 42 {
-			t.Errorf("Expected value to be 42, got %v", v)
+		if m.IsZero() {
+			t.Errorf("IsZero(): Expected value to be present")
 		}
-	})
-
-	// Add more test cases for other methods of the Value interface
-	// ...
-	// Test Concurrent Store() and Load() on a Value
-	t.Run("ConcurrentStoreAndLoad", func(t *testing.T) {
-		mv := mutex.NewValue[int]()
-		numRoutines := 100
-		wg := sync.WaitGroup{}
-		wg.Add(numRoutines)
-
-		for i := 0; i < numRoutines; i++ {
-			go func() {
-				mv.Store(42)
-				v, ok := mv.Load()
-				if !ok {
-					t.Errorf("Expected ok to be true, got false")
-				}
-				if v != 42 {
-					t.Errorf("Expected value to be 42, got %v", v)
-				}
-				wg.Done()
-			}()
-		}
-
-		wg.Wait()
 	})
 }
 
-func TestNew(t *testing.T) {
-	m := mutex.NewValue[string]()
+func TestValueNonComparable(t *testing.T) {
+	m := internal.NewValue[[]any]()
 	if _, ok := m.Load(); ok {
 		t.Errorf("Load(): Expected value to be absent")
 	}
-	if swapped := m.CompareAndSwap("A", "B"); swapped {
-		t.Errorf("CompareAndSwap(): Expected value be swapped")
-	}
-	m.Store("B")
-	if swapped := m.CompareAndSwap("B", "C"); !swapped {
-		t.Errorf("CompareAndSwap(): Expected value be swapped")
-	}
-
-	mn := mutex.NewNumeric[int]()
-	if _, ok := mn.Load(); ok {
-		t.Errorf("Load(): Expected value to be absent")
-	}
-	if swapped := mn.CompareAndSwap(-1, 42); swapped {
+	if swapped := m.CompareAndSwap([]any{1, 2}, []any{1, 2, 3}); swapped {
 		t.Errorf("CompareAndSwap(): Expected value not to be swapped")
 	}
-	mn.Store(42)
-	if swapped := mn.CompareAndSwap(42, -1); !swapped {
+	m.Store([]any{1, 2})
+	if swapped := m.CompareAndSwap([]any{1, 2}, []any{1, 2, 3}); !swapped {
 		t.Errorf("CompareAndSwap(): Expected value be swapped")
 	}
-
-}
-func TestNewWithValue(t *testing.T) {
-	m := mutex.NewWithValue("42")
-	v, ok := m.Load()
-	if !ok || v != "42" {
-		t.Errorf("Load(): Expected value 42 , got value %s", v)
-	}
-	if m.IsZero() {
-		t.Errorf("IsZero(): Expected value to be present")
-	}
 }
 
-func TestLoad(t *testing.T) {
-	m := mutex.NewValue[int]()
+func TestValueLoad(t *testing.T) {
+	m := internal.NewValue[int]()
 	value := 42
 	m.Store(value)
 	v, ok := m.Load()
@@ -109,8 +72,8 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestStore(t *testing.T) {
-	m := mutex.NewValue[int]()
+func TestValueStore(t *testing.T) {
+	m := internal.NewValue[int]()
 	value := 42
 	m.Store(value)
 	v, ok := m.Load()
@@ -119,8 +82,8 @@ func TestStore(t *testing.T) {
 	}
 }
 
-func TestLoadOrStore(t *testing.T) {
-	m := mutex.NewValue[int]()
+func TestValueLoadOrStore(t *testing.T) {
+	m := internal.NewValue[int]()
 	value := 42
 	actual, loaded := m.LoadOrStore(value)
 	if loaded {
@@ -139,8 +102,8 @@ func TestLoadOrStore(t *testing.T) {
 	}
 }
 
-func TestSwap(t *testing.T) {
-	m := mutex.NewValue[int]()
+func TestValueSwap(t *testing.T) {
+	m := internal.NewValue[int]()
 	value := 42
 	previous, loaded := m.Swap(value)
 	if loaded {
@@ -159,8 +122,8 @@ func TestSwap(t *testing.T) {
 	}
 }
 
-func TestCompareAndSwap(t *testing.T) {
-	m := mutex.NewValue[int]()
+func TestValueCompareAndSwap(t *testing.T) {
+	m := internal.NewValue[int]()
 	current, swap := 42, 43
 	m.Store(current)
 	swapped := m.CompareAndSwap(current, swap)
@@ -174,7 +137,7 @@ func TestCompareAndSwap(t *testing.T) {
 }
 
 func testValues[V any](t *testing.T, value V) {
-	m := mutex.NewValue[V]()
+	m := internal.NewValue[V]()
 
 	if !m.IsZero() {
 		t.Errorf("IsZero(): Expected value to be zero")
@@ -207,7 +170,7 @@ func testValues[V any](t *testing.T, value V) {
 	}
 
 }
-func TestValues(t *testing.T) {
+func TestValueTypes(t *testing.T) {
 
 	// Test values of different types
 	var b bool = true
@@ -220,6 +183,7 @@ func TestValues(t *testing.T) {
 	var st = struct {
 		A int
 	}{A: 1}
+	var sl []int = []int{1, 2, 3}
 
 	// Pointer to values
 	var bP *bool = &b
@@ -232,6 +196,7 @@ func TestValues(t *testing.T) {
 	var stP *struct {
 		A int
 	} = &st
+	var slP []*int = []*int{&sl[0], &sl[1], &sl[2]}
 
 	// Nil pointers
 	var bN *bool = nil
@@ -244,6 +209,7 @@ func TestValues(t *testing.T) {
 	var stN *struct {
 		A int
 	} = nil
+	var slN []int = nil
 
 	testValues(t, b)
 	testValues(t, s)
@@ -253,6 +219,7 @@ func TestValues(t *testing.T) {
 	testValues(t, r)
 	testValues(t, by)
 	testValues(t, st)
+	testValues(t, sl)
 
 	testValues(t, bP)
 	testValues(t, sP)
@@ -262,6 +229,7 @@ func TestValues(t *testing.T) {
 	testValues(t, rP)
 	testValues(t, byP)
 	testValues(t, stP)
+	testValues(t, slP)
 
 	testValues(t, bN)
 	testValues(t, sN)
@@ -271,11 +239,12 @@ func TestValues(t *testing.T) {
 	testValues(t, rN)
 	testValues(t, byN)
 	testValues(t, stN)
+	testValues(t, slN)
 }
 
-func TestConcurrency(t *testing.T) {
+func TestValueConcurrency(t *testing.T) {
 	// Create a new Value with initial value 0
-	m := mutex.NewValue[int]()
+	m := internal.NewValue[int]()
 	m.Store(0)
 
 	// Create a wait group to synchronize goroutines
@@ -308,4 +277,26 @@ func TestConcurrency(t *testing.T) {
 	// Check if the value is now the string "0"
 	v, ok := m.Load()
 	fmt.Println("value=", v, "ok=", ok)
+}
+
+func TestValueClear(t *testing.T) {
+	m := internal.NewValue[int]()
+	m.Store(42)
+	m.Clear()
+	if v, ok := m.Load(); ok {
+		t.Errorf("Load(): Expected value to be absent")
+	} else if v != 0 {
+		t.Errorf("Load(): Expected value to be 0, got %d", v)
+	}
+}
+
+func TestValueAny(t *testing.T) {
+	m := internal.NewValue[any]()
+	if m.CompareAndSwap(nil, 43) { // this fails as set flag is false
+		t.Errorf("CompareAndSwap(): Expected value not to be swapped")
+	}
+	m.Store(nil)
+	if !m.CompareAndSwap(nil, 42) {
+		t.Errorf("CompareAndSwap(): Expected value to be swapped")
+	}
 }
